@@ -42,13 +42,19 @@ namespace BookstoreAPI.Controllers
                 switch (filter.ToLower())
                 {
                     case "title":
-                        books = books.Where(b => b.BookTitle.Contains(searchTerm));
+                        // Split the search term by spaces to get individual keywords
+                        var titleKeywords = searchTerm.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                        books = books.ToList().Where(b => titleKeywords.Any(k => b.BookTitle.ToLower().Contains(k))).AsQueryable();
                         break;
                     case "author":
-                        books = books.Where(b => b.BookAuthor.Contains(searchTerm));
+                        // Split the search term by spaces to get individual keywords
+                        var authorKeywords = searchTerm.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                        books = books.ToList().Where(b => authorKeywords.Any(k => b.BookAuthor.ToLower().Contains(k))).AsQueryable();
                         break;
                     case "genre":
-                        books = books.Where(b => b.Genre.Contains(searchTerm));
+                        // Split the search term by spaces to get individual keywords
+                        var genreKeywords = searchTerm.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                        books = books.ToList().Where(b => genreKeywords.Any(k => b.Genre.ToLower().Contains(k))).AsQueryable();
                         break;
                     default:
                         return BadRequest("Invalid filter parameter.");
@@ -59,6 +65,8 @@ namespace BookstoreAPI.Controllers
 
             return Ok(filteredBooks);
         }
+
+
 
         [HttpGet("get-by-id/{id:int}")]
         public ActionResult<Book> Get(int id)
@@ -78,7 +86,9 @@ namespace BookstoreAPI.Controllers
         public ActionResult<IEnumerable<Book>> GetByGenre(string genre)
         {
             // Retrieve books by genre
-            var books = _db.Books.Where(b => b.Genre == genre).ToList();
+            var books = _db.Books
+                .Where(b => b.Genre.ToLower().Contains(genre.ToLower()))
+                .ToList();
 
             if (books.Count == 0)
             {
@@ -88,11 +98,14 @@ namespace BookstoreAPI.Controllers
             return Ok(books);
         }
 
+
         [HttpGet("get-by-author/{author}")]
         public ActionResult<IEnumerable<Book>> GetByAuthor(string author)
         {
             // Retrieve books by author
-            var books = _db.Books.Where(b => b.BookAuthor == author).ToList();
+            var books = _db.Books
+                .Where(b => b.BookAuthor.ToLower().Contains(author.ToLower()))
+                .ToList();
 
             if (books.Count == 0)
             {
@@ -109,17 +122,30 @@ namespace BookstoreAPI.Controllers
             Book newBook = new Book
             {
                 BookTitle = book.BookTitle,
-                BookAuthor = book.BookAuthor,
-                Genre = book.Genre,
                 YearOfPublication = book.YearOfPublication,
                 Publisher = book.Publisher
             };
+
+            // Split the authors by comma and remove any leading or trailing spaces
+            if (!string.IsNullOrEmpty(book.BookAuthor))
+            {
+                string[] authors = book.BookAuthor.Split(',').Select(a => a.Trim()).ToArray();
+                newBook.BookAuthor = string.Join(", ", authors);
+            }
+
+            // Split the genres by comma and remove any leading or trailing spaces
+            if (!string.IsNullOrEmpty(book.Genre))
+            {
+                string[] genres = book.Genre.Split(',').Select(g => g.Trim()).ToArray();
+                newBook.Genre = string.Join(", ", genres);
+            }
 
             await _db.Books.AddAsync(newBook);
             await _db.SaveChangesAsync();
 
             return CreatedAtAction(nameof(Get), new { id = newBook.Id }, newBook);
         }
+
 
         [HttpPut("update/{id:int}")]
         public async Task<IActionResult> Update(int id, [FromForm] Book updatedBook)
