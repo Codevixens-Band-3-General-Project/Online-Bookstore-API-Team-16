@@ -27,44 +27,60 @@ namespace BookstoreAPI.Controllers
         [HttpGet("all")]
         public ActionResult<IEnumerable<Book>> Get()
         {
-            // Retrieve all books from the database
-            var books = _db.Books.ToList();
-            return Ok(books);
+            try
+            {
+                // Retrieve all books from the database
+                var books = _db.Books.ToList();
+                return Ok(books);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve books.");
+                return StatusCode(StatusCodes.Status500InternalServerError, "Failed to retrieve books. Please try again later.");
+            }
         }
 
         [HttpGet("search")]
         public ActionResult<IEnumerable<Book>> Search(string searchTerm, string filter)
         {
-            // Perform a search based on the provided search term and filter
-            var books = _db.Books.AsQueryable();
-
-            if (!string.IsNullOrEmpty(searchTerm) && !string.IsNullOrEmpty(filter))
+            try
             {
-                switch (filter.ToLower())
+                // Perform a search based on the provided search term and filter
+                var books = _db.Books.AsQueryable();
+
+                if (!string.IsNullOrEmpty(searchTerm) && !string.IsNullOrEmpty(filter))
                 {
-                    case "title":
-                        // Split the search term by spaces to get individual keywords
-                        var titleKeywords = searchTerm.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                        books = books.ToList().Where(b => titleKeywords.Any(k => b.BookTitle.ToLower().Contains(k))).AsQueryable();
-                        break;
-                    case "author":
-                        // Split the search term by spaces to get individual keywords
-                        var authorKeywords = searchTerm.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                        books = books.ToList().Where(b => authorKeywords.Any(k => b.BookAuthor.ToLower().Contains(k))).AsQueryable();
-                        break;
-                    case "genre":
-                        // Split the search term by spaces to get individual keywords
-                        var genreKeywords = searchTerm.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                        books = books.ToList().Where(b => genreKeywords.Any(k => b.Genre.ToLower().Contains(k))).AsQueryable();
-                        break;
-                    default:
-                        return BadRequest("Invalid filter parameter.");
+                    switch (filter.ToLower())
+                    {
+                        case "title":
+                            // Split the search term by spaces to get individual keywords
+                            var titleKeywords = searchTerm.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                            books = books.ToList().Where(b => titleKeywords.Any(k => b.BookTitle.ToLower().Contains(k))).AsQueryable();
+                            break;
+                        case "author":
+                            // Split the search term by spaces to get individual keywords
+                            var authorKeywords = searchTerm.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                            books = books.ToList().Where(b => authorKeywords.Any(k => b.BookAuthor.ToLower().Contains(k))).AsQueryable();
+                            break;
+                        case "genre":
+                            // Split the search term by spaces to get individual keywords
+                            var genreKeywords = searchTerm.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                            books = books.ToList().Where(b => genreKeywords.Any(k => b.Genre.ToLower().Contains(k))).AsQueryable();
+                            break;
+                        default:
+                            return BadRequest("Invalid filter parameter.");
+                    }
                 }
+                var filteredBooks = books.ToList();
+
+                return Ok(filteredBooks);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to search for books.");
+                return StatusCode(StatusCodes.Status500InternalServerError, "Failed to search for books. Please try again later.");
             }
 
-            var filteredBooks = books.ToList();
-
-            return Ok(filteredBooks);
         }
 
 
@@ -268,4 +284,3 @@ namespace BookstoreAPI.Controllers
         }
     }
 }
-
