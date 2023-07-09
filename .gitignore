@@ -404,3 +404,4 @@ ASALocalRun/
 # Local History for Visual Studio
 .localhistory//Data/BX-Books.csv
 /Migrations
+/Data/DataSeeder.cs
