@@ -1,4 +1,4 @@
-﻿using BookstoreAPI.Models;
+using BookstoreAPI.Models;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
@@ -11,7 +11,10 @@ namespace BookstoreAPI.Data
         {
 
         }
-      
 
+        public DbSet<Book> Books { get; set; }
     }
 }
+
+
+
