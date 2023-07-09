@@ -25,9 +25,4 @@
   <ItemGroup>
     <Folder Include="Data\" />
   </ItemGroup>
-  <ItemGroup>
-    <None Update="Data\BX-Books.csv">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
 </Project>

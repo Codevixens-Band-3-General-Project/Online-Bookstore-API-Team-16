@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Http;
 using BookstoreAPI.Extensions;
+using Microsoft.EntityFrameworkCore;
 
 namespace BookstoreAPI.Controllers
 {
@@ -118,6 +119,16 @@ namespace BookstoreAPI.Controllers
         [HttpPost("create")]
         public async Task<ActionResult<Book>> CreateBook([FromForm] Book book)
         {
+            // Check if a book with the same title, author, and year of publication already exists
+            var existingBook = await _db.Books.FirstOrDefaultAsync(b =>
+                b.BookTitle == book.BookTitle &&
+                b.BookAuthor == book.BookAuthor &&
+                b.YearOfPublication == book.YearOfPublication);
+
+            if (existingBook != null)
+            {
+                return Conflict("A book with the same title, author, and year of publication already exists.");
+            }
             // Create a new book and save it to the database
             Book newBook = new Book
             {
