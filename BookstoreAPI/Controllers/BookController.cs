@@ -9,9 +9,12 @@ using Microsoft.AspNetCore.Http;
 using BookstoreAPI.Extensions;
 using BookstoreAPI.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
+using System.Data;
 
 namespace BookstoreAPI.Controllers
 {
+    [Authorize(AuthenticationSchemes = "Bearer")] // Require JWT Bearer token authentication for accessing the controller
     [ApiController]
     [Route("[controller]")]
     public class BookController : ControllerBase
@@ -25,6 +28,7 @@ namespace BookstoreAPI.Controllers
             _db = db;
         }
 
+        // GET: /book/all
         [HttpGet("all")]
         public ActionResult<IEnumerable<Book>> Get()
         {
@@ -41,6 +45,7 @@ namespace BookstoreAPI.Controllers
             }
         }
 
+        // GET: /book/search
         [HttpGet("search")]
         public ActionResult<IEnumerable<Book>> Search(string searchTerm, string filter)
         {
@@ -93,7 +98,7 @@ namespace BookstoreAPI.Controllers
         }
 
 
-
+        // GET: /book/get-by-id/{id}
         [HttpGet("get-by-id/{id:int}")]
         public ActionResult<Book> Get(int id)
         {
@@ -117,6 +122,7 @@ namespace BookstoreAPI.Controllers
             }
         }
 
+        // GET: /book/get-by-genre/{genre}
         [HttpGet("get-by-genre/{genre}")]
         public ActionResult<IEnumerable<Book>> GetByGenre(string genre)
         {
@@ -143,7 +149,7 @@ namespace BookstoreAPI.Controllers
 
         }
 
-
+        // GET: /book/get-by-author/{author}
         [HttpGet("get-by-author/{author}")]
         public ActionResult<IEnumerable<Book>> GetByAuthor(string author)
         {
@@ -167,10 +173,11 @@ namespace BookstoreAPI.Controllers
                 _logger.LogError(ex, "Failed to retrieve books by author(s).");
                 return StatusCode(StatusCodes.Status500InternalServerError, "Failed to retrieve books by author(s). Please try again later.");
             }
-         
         }
 
+        // POST: /book/create
         [HttpPost("create")]
+        [Authorize(Roles = "Admin")] // Restrict access to only users with the "Admin" role
         public async Task<ActionResult<Book>> CreateBook([FromForm] Book book)
         {
             try
@@ -221,7 +228,7 @@ namespace BookstoreAPI.Controllers
             }
         }
 
-
+        // PUT: /book/update/{id}
         [HttpPut("update/{id:int}")]
         public async Task<IActionResult> Update(int id, [FromForm] Book updatedBook)
         {
@@ -281,6 +288,7 @@ namespace BookstoreAPI.Controllers
             }
         }
 
+        // DELETE: /book/delete/{id}
         [HttpDelete("delete/{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
@@ -306,6 +314,8 @@ namespace BookstoreAPI.Controllers
             }
         }
 
+
+        // POST: /book/add-to-cart/{id}
         [HttpPost("add-to-cart/{id:int}")]
         public async Task<ActionResult> AddToCart(int id)
         {
@@ -334,6 +344,7 @@ namespace BookstoreAPI.Controllers
             }
         }
 
+        // POST: /book/delete-from-cart/{id}
         [HttpPost("delete-from-cart/{id:int}")]
         public ActionResult DeleteFromCart(int id)
         {
@@ -365,6 +376,7 @@ namespace BookstoreAPI.Controllers
 
         }
 
+        // POST: /book/view-cart/{id}
         [HttpGet("view-cart")]
         public ActionResult<IEnumerable<Book>> ViewCart()
         {

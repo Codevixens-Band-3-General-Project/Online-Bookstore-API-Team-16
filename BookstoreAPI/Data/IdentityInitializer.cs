@@ -38,7 +38,7 @@ public class IdentityInitializer
 
     public static async Task AssignRoles(UserManager<IdentityUser> userManager)
     {
-        var adminUser = await userManager.FindByEmailAsync("admin@example.com");
+        var adminUser = await userManager.FindByEmailAsync("admin@gmail.com");
         if (adminUser != null)
         {
             await userManager.AddToRoleAsync(adminUser, "Admin");

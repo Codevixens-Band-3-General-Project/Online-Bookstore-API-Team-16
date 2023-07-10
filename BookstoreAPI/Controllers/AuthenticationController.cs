@@ -2,6 +2,7 @@
 using BookstoreAPI.Models;
 using BookstoreAPI.Models.DTO;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.V4.Pages.Account.Internal;
@@ -15,6 +16,7 @@ using System.Text.RegularExpressions;
 
 namespace BookstoreAPI.Controllers
 {
+    [AllowAnonymous]
     [Route("api/[controller]")]
     [ApiController]
     public class AuthenticationController : ControllerBase
