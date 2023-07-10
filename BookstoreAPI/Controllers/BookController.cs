@@ -11,6 +11,8 @@ using BookstoreAPI.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using System.Data;
+using Microsoft.AspNetCore.Identity;
+using System.Security.Claims;
 
 namespace BookstoreAPI.Controllers
 {
@@ -21,11 +23,17 @@ namespace BookstoreAPI.Controllers
     {
         private readonly ILogger<BookController> _logger;
         private readonly ApplicationDbContext _db;
+        private readonly UserManager<IdentityUser> _userManager;
+        private readonly SignInManager<IdentityUser> _signInManager;
 
-        public BookController(ILogger<BookController> logger, ApplicationDbContext db)
+
+        public BookController(ILogger<BookController> logger, ApplicationDbContext db,
+            UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager)
         {
             _logger = logger;
             _db = db;
+            _userManager = userManager;
+            _signInManager = signInManager;
         }
 
         // GET: /book/all
@@ -318,7 +326,7 @@ namespace BookstoreAPI.Controllers
         // POST: /book/add-to-cart/{id}
         [HttpPost("add-to-cart/{id:int}")]
         [Authorize]
-        public async Task<ActionResult> AddToCart(int id)
+        public async Task<ActionResult> AddToCart(int id, int quantity)
         {
             try
             {
@@ -330,13 +338,25 @@ namespace BookstoreAPI.Controllers
                     return NotFound();
                 }
 
-                List<Book> cart = HttpContext.Session.GetObjectFromJson<List<Book>>("Cart") ?? new List<Book>();
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var cart = await _db.CartItems
+                    .Where(c => c.UserId == userId)
+                    .ToListAsync();
 
-                cart.Add(book);
+                cart.Add(new CartItem { BookId = id, Quantity = quantity });
 
-                HttpContext.Session.SetObjectAsJson("Cart", cart);
+                // Save the cart items to the database
+                foreach (var cartItem in cart)
+                {
+                    if (!await _db.CartItems.AnyAsync(c => c.UserId == userId && c.BookId == cartItem.BookId))
+                    {
+                        _db.CartItems.Add(cartItem);
+                    }
+                }
 
-                return Ok($"Book-ID {id} Title-{book.BookTitle} has been added to cart");
+                await _db.SaveChangesAsync();
+
+                return Ok($"Book-ID {id} Title-{book.BookTitle} (Quantity: {quantity}) has been added to cart");
             }
             catch (Exception ex)
             {

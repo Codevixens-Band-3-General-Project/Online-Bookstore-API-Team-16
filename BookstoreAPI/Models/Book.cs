@@ -13,10 +13,4 @@ namespace BookstoreAPI.Models
         public int? YearOfPublication { get; set; }
         public string? Publisher { get; set; }
     }
-
-    public class CartItem
-    {
-        public int BookId { get; set; }
-        public int Quantity { get; set; }
-    }
 }
