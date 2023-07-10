@@ -44,11 +44,11 @@ public class IdentityInitializer
             await userManager.AddToRoleAsync(adminUser, "Admin");
         }
 
-        var normalUser = await userManager.FindByEmailAsync("user@example.com");
-        if (normalUser != null)
-        {
-            await userManager.AddToRoleAsync(normalUser, "NormalUser");
-        }
+        //var normalUser = await userManager.FindByEmailAsync("user@example.com");
+        //if (normalUser != null)
+        //{
+        //    await userManager.AddToRoleAsync(normalUser, "NormalUser");
+        //}
     }
 }
 

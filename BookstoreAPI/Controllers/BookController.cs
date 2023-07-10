@@ -14,7 +14,7 @@ using System.Data;
 
 namespace BookstoreAPI.Controllers
 {
-    [Authorize(AuthenticationSchemes = "Bearer")] // Require JWT Bearer token authentication for accessing the controller
+    [Authorize(AuthenticationSchemes = "Bearer")] // Require JWT Bearer token authentication
     [ApiController]
     [Route("[controller]")]
     public class BookController : ControllerBase
@@ -177,7 +177,7 @@ namespace BookstoreAPI.Controllers
 
         // POST: /book/create
         [HttpPost("create")]
-        [Authorize(Roles = "Admin")] // Restrict access to only users with the "Admin" role
+        //[Authorize(Roles = "Admin")] // Restrict access to only users with the "Admin" role
         public async Task<ActionResult<Book>> CreateBook([FromForm] Book book)
         {
             try
