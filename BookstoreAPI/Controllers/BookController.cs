@@ -88,199 +88,285 @@ namespace BookstoreAPI.Controllers
         [HttpGet("get-by-id/{id:int}")]
         public ActionResult<Book> Get(int id)
         {
-            // Retrieve a book by its ID
-            var book = _db.Books.Find(id);
-
-            if (book == null)
+            try
             {
-                return NotFound();
-            }
+                // Retrieve a book by its ID
+                var book = _db.Books.Find(id);
 
-            return book;
+                if (book == null)
+                {
+                    return NotFound();
+                }
+
+                return book;
+            }
+            catch (Exception ex)
+            {
+
+                _logger.LogError(ex, $"Failed to retrieve book with ID : {id}.");
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Failed to retrieve book with ID: {id}.");
+            }
         }
 
         [HttpGet("get-by-genre/{genre}")]
         public ActionResult<IEnumerable<Book>> GetByGenre(string genre)
         {
-            // Retrieve books by genre
-            var books = _db.Books
+            try
+            {
+                // Retrieve books by genre
+                var books = _db.Books
                 .Where(b => b.Genre.ToLower().Contains(genre.ToLower()))
                 .ToList();
 
-            if (books.Count == 0)
+                if (books.Count == 0)
+                {
+                    return NotFound();
+                }
+
+                return Ok(books);
+            }
+            catch (Exception ex)
             {
-                return NotFound();
+                _logger.LogError(ex, "Failed to retrieve books by genre.");
+                return StatusCode(StatusCodes.Status500InternalServerError, "Failed to retrieve books by genre. Please try again later.");
             }
 
-            return Ok(books);
+
         }
 
 
         [HttpGet("get-by-author/{author}")]
         public ActionResult<IEnumerable<Book>> GetByAuthor(string author)
         {
-            // Retrieve books by author
-            var books = _db.Books
-                .Where(b => b.BookAuthor.ToLower().Contains(author.ToLower()))
-                .ToList();
-
-            if (books.Count == 0)
+            try
             {
-                return NotFound();
-            }
+                // Retrieve books by author
+                var books = _db.Books
+                    .Where(b => b.BookAuthor.ToLower().Contains(author.ToLower()))
+                    .ToList();
 
-            return Ok(books);
+                if (books.Count == 0)
+                {
+                    return NotFound();
+                }
+
+                return Ok(books);
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve books by author(s).");
+                return StatusCode(StatusCodes.Status500InternalServerError, "Failed to retrieve books by author(s). Please try again later.");
+            }
+         
         }
 
         [HttpPost("create")]
         public async Task<ActionResult<Book>> CreateBook([FromForm] Book book)
         {
-            // Check if a book with the same title, author, and year of publication already exists
-            var existingBook = await _db.Books.FirstOrDefaultAsync(b =>
-                b.BookTitle == book.BookTitle &&
-                b.BookAuthor == book.BookAuthor &&
-                b.YearOfPublication == book.YearOfPublication);
-
-            if (existingBook != null)
+            try
             {
-                return Conflict("A book with the same title, author, and year of publication already exists.");
+                // Check if a book with the same title, author, and year of publication already exists
+                var existingBook = await _db.Books.FirstOrDefaultAsync(b =>
+                    b.BookTitle == book.BookTitle &&
+                    b.BookAuthor == book.BookAuthor &&
+                    b.YearOfPublication == book.YearOfPublication);
+
+                if (existingBook != null)
+                {
+                    return Conflict("A book with the same title, author, and year of publication already exists.");
+                }
+                // Create a new book and save it to the database
+                Book newBook = new Book
+                {
+                    BookTitle = book.BookTitle,
+                    YearOfPublication = book.YearOfPublication,
+                    Publisher = book.Publisher
+                };
+
+                // Split the authors by comma and remove any leading or trailing spaces
+                if (!string.IsNullOrEmpty(book.BookAuthor))
+                {
+                    string[] authors = book.BookAuthor.Split(',').Select(a => a.Trim()).ToArray();
+                    newBook.BookAuthor = string.Join(", ", authors);
+                }
+
+                // Split the genres by comma and remove any leading or trailing spaces
+                if (!string.IsNullOrEmpty(book.Genre))
+                {
+                    string[] genres = book.Genre.Split(',').Select(g => g.Trim()).ToArray();
+                    newBook.Genre = string.Join(", ", genres);
+                }
+
+                await _db.Books.AddAsync(newBook);
+                await _db.SaveChangesAsync();
+
+                return CreatedAtAction(nameof(Get), new { id = newBook.Id }, newBook);
+
             }
-            // Create a new book and save it to the database
-            Book newBook = new Book
-            {
-                BookTitle = book.BookTitle,
-                YearOfPublication = book.YearOfPublication,
-                Publisher = book.Publisher
-            };
 
-            // Split the authors by comma and remove any leading or trailing spaces
-            if (!string.IsNullOrEmpty(book.BookAuthor))
+            catch (Exception ex)
             {
-                string[] authors = book.BookAuthor.Split(',').Select(a => a.Trim()).ToArray();
-                newBook.BookAuthor = string.Join(", ", authors);
+                _logger.LogError(ex, "Failed to create a book.");
+                return StatusCode(StatusCodes.Status500InternalServerError, "Failed to create a book. Please try again later.");
             }
-
-            // Split the genres by comma and remove any leading or trailing spaces
-            if (!string.IsNullOrEmpty(book.Genre))
-            {
-                string[] genres = book.Genre.Split(',').Select(g => g.Trim()).ToArray();
-                newBook.Genre = string.Join(", ", genres);
-            }
-
-            await _db.Books.AddAsync(newBook);
-            await _db.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(Get), new { id = newBook.Id }, newBook);
         }
 
 
         [HttpPut("update/{id:int}")]
         public async Task<IActionResult> Update(int id, [FromForm] Book updatedBook)
         {
-            // Update an existing book based on its ID
-            var existingBook = await _db.Books.FindAsync(id);
-
-            if (existingBook == null)
+            try
             {
-                return NotFound();
+                // Update an existing book based on its ID
+                var existingBook = await _db.Books.FindAsync(id);
+
+                if (existingBook == null)
+                {
+                    return NotFound();
+                }
+
+                if (!string.IsNullOrEmpty(updatedBook.BookTitle))
+                {
+                    existingBook.BookTitle = updatedBook.BookTitle;
+                }
+
+                if (!string.IsNullOrEmpty(updatedBook.BookAuthor))
+                {
+                    existingBook.BookAuthor = updatedBook.BookAuthor;
+                }
+
+                if (!string.IsNullOrEmpty(updatedBook.Genre))
+                {
+                    existingBook.Genre = updatedBook.Genre;
+                }
+
+                if (updatedBook.YearOfPublication.HasValue)
+                {
+                    existingBook.YearOfPublication = updatedBook.YearOfPublication;
+                }
+
+                if (!string.IsNullOrEmpty(updatedBook.Publisher))
+                {
+                    existingBook.Publisher = updatedBook.Publisher;
+                }
+
+                await _db.SaveChangesAsync();
+
+                return Ok(existingBook);
+
             }
 
-            if (!string.IsNullOrEmpty(updatedBook.BookTitle))
+            catch (Exception ex)
             {
-                existingBook.BookTitle = updatedBook.BookTitle;
+                _logger.LogError(ex, $"Failed to update the book with ID: {id}");
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Failed to update the book with ID: {id}. Please try again later.");
             }
-
-            if (!string.IsNullOrEmpty(updatedBook.BookAuthor))
-            {
-                existingBook.BookAuthor = updatedBook.BookAuthor;
-            }
-
-            if (!string.IsNullOrEmpty(updatedBook.Genre))
-            {
-                existingBook.Genre = updatedBook.Genre;
-            }
-
-            if (updatedBook.YearOfPublication.HasValue)
-            {
-                existingBook.YearOfPublication = updatedBook.YearOfPublication;
-            }
-
-            if (!string.IsNullOrEmpty(updatedBook.Publisher))
-            {
-                existingBook.Publisher = updatedBook.Publisher;
-            }
-
-            await _db.SaveChangesAsync();
-
-            return Ok(existingBook);
         }
 
         [HttpDelete("delete/{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
-            // Delete a book based on its ID
-            var book = await _db.Books.FindAsync(id);
-
-            if (book == null)
+            try
             {
-                return NotFound();
+                // Delete a book based on its ID
+                var book = await _db.Books.FindAsync(id);
+
+                if (book == null)
+                {
+                    return NotFound();
+                }
+
+                _db.Books.Remove(book);
+                await _db.SaveChangesAsync();
+
+                return NoContent();
             }
-
-            _db.Books.Remove(book);
-            await _db.SaveChangesAsync();
-
-            return NoContent();
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Failed to delete the book with ID: {id}");
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Failed to delete the book with ID: {id}. Please try again later.");
+            }
         }
 
         [HttpPost("add-to-cart/{id:int}")]
         public async Task<ActionResult> AddToCart(int id)
         {
-            // Add a book to the shopping cart
-            var book = await _db.Books.FindAsync(id);
-
-            if (book == null)
+            try
             {
-                return NotFound();
+                // Add a book to the shopping cart
+                var book = await _db.Books.FindAsync(id);
+
+                if (book == null)
+                {
+                    return NotFound();
+                }
+
+                List<Book> cart = HttpContext.Session.GetObjectFromJson<List<Book>>("Cart") ?? new List<Book>();
+
+                cart.Add(book);
+
+                HttpContext.Session.SetObjectAsJson("Cart", cart);
+
+                return Ok();
             }
-
-            List<Book> cart = HttpContext.Session.GetObjectFromJson<List<Book>>("Cart") ?? new List<Book>();
-
-            cart.Add(book);
-
-            HttpContext.Session.SetObjectAsJson("Cart", cart);
-
-            return Ok();
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Failed to add the book with ID: {id} to the cart.");
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Failed to add the book with ID: {id} to the cart. Please try again later.");
+            }
         }
 
         [HttpPost("delete-from-cart/{id:int}")]
         public ActionResult DeleteFromCart(int id)
         {
-            // Remove a book from the shopping cart
-            List<Book> cart = HttpContext.Session.GetObjectFromJson<List<Book>>("Cart");
+           try
+           {
+                // Remove a book from the shopping cart
+                List<Book> cart = HttpContext.Session.GetObjectFromJson<List<Book>>("Cart");
 
-            if (cart == null)
+                if (cart == null)
+                {
+                    return NotFound();
+                }
+
+                var book = cart.FirstOrDefault(b => b.Id == id);
+
+                if (book != null)
+                {
+                    cart.Remove(book);
+                    HttpContext.Session.SetObjectAsJson("Cart", cart);
+                }
+
+                return Ok();
+           }
+            catch (Exception ex)
             {
-                return NotFound();
+                _logger.LogError(ex, $"Failed to delete the book with ID: {id} from the cart.");
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Failed to delete the book with ID: {id} from the cart. Please try again later.");
             }
 
-            var book = cart.FirstOrDefault(b => b.Id == id);
-
-            if (book != null)
-            {
-                cart.Remove(book);
-                HttpContext.Session.SetObjectAsJson("Cart", cart);
-            }
-
-            return Ok();
         }
 
         [HttpGet("view-cart")]
         public ActionResult<IEnumerable<Book>> ViewCart()
         {
-            // View the contents of the shopping cart
-            List<Book> cart = HttpContext.Session.GetObjectFromJson<List<Book>>("Cart");
-
-            return Ok(cart);
+            try
+            {
+                // View the contents of the shopping cart
+                List<Book> cart = HttpContext.Session.GetObjectFromJson<List<Book>>("Cart");
+                if (cart == null)
+                {
+                    return StatusCode(StatusCodes.Status404NotFound, "Cart is empty, please add a book to view cart.");
+                }
+                return Ok(cart);
+            }
+            
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to view the cart.");
+                return StatusCode(StatusCodes.Status500InternalServerError, "Failed to view the cart. Please try again later.");
+            }
         }
     }
 }
