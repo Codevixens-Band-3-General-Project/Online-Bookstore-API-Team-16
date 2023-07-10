@@ -55,7 +55,15 @@ namespace BookstoreAPI.Controllers
                         case "title":
                             // Split the search term by spaces to get individual keywords
                             var titleKeywords = searchTerm.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                            books = books.ToList().Where(b => titleKeywords.Any(k => b.BookTitle.ToLower().Contains(k))).AsQueryable();
+                            // Require at least two or three relevant keywords for the search to appear
+                            if (titleKeywords.Length >= 2)
+                            {
+                                books = books.ToList().Where(b => titleKeywords.All(k => b.BookTitle.ToLower().Contains(k))).AsQueryable();
+                            }
+                            else
+                            {
+                                books = Enumerable.Empty<Book>().AsQueryable();
+                            }
                             break;
                         case "author":
                             // Split the search term by spaces to get individual keywords
