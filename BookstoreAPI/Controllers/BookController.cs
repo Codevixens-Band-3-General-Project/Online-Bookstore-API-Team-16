@@ -234,36 +234,44 @@ namespace BookstoreAPI.Controllers
                     return NotFound();
                 }
 
-                if (!string.IsNullOrEmpty(updatedBook.BookTitle))
+                var updatedParameters = new List<string>();
+
+                if (!string.IsNullOrEmpty(updatedBook.BookTitle) && existingBook.BookTitle != updatedBook.BookTitle)
                 {
                     existingBook.BookTitle = updatedBook.BookTitle;
+                    updatedParameters.Add("Book Title");
                 }
 
-                if (!string.IsNullOrEmpty(updatedBook.BookAuthor))
+                if (!string.IsNullOrEmpty(updatedBook.BookAuthor) && existingBook.BookAuthor != updatedBook.BookAuthor)
                 {
                     existingBook.BookAuthor = updatedBook.BookAuthor;
+                    updatedParameters.Add("Book Author");
                 }
 
-                if (!string.IsNullOrEmpty(updatedBook.Genre))
+                if (!string.IsNullOrEmpty(updatedBook.Genre) && existingBook.Genre != updatedBook.Genre)
                 {
                     existingBook.Genre = updatedBook.Genre;
+                    updatedParameters.Add("Genre");
                 }
 
-                if (updatedBook.YearOfPublication.HasValue)
+                if (updatedBook.YearOfPublication.HasValue && existingBook.YearOfPublication != updatedBook.YearOfPublication)
                 {
                     existingBook.YearOfPublication = updatedBook.YearOfPublication;
+                    updatedParameters.Add("Year of Publication");
                 }
 
-                if (!string.IsNullOrEmpty(updatedBook.Publisher))
+                if (!string.IsNullOrEmpty(updatedBook.Publisher) && existingBook.Publisher != updatedBook.Publisher)
                 {
                     existingBook.Publisher = updatedBook.Publisher;
+                    updatedParameters.Add("Publisher");
                 }
 
                 await _db.SaveChangesAsync();
 
-                return Ok(existingBook);
-
+                var message = $"Book with ID {id} updated. Updated parameters: {string.Join(", ", updatedParameters)}";
+                return Ok(new { message });
             }
+
 
             catch (Exception ex)
             {
