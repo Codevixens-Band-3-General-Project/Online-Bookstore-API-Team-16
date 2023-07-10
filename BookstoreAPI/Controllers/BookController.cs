@@ -201,7 +201,7 @@ namespace BookstoreAPI.Controllers
                 await _db.Books.AddAsync(newBook);
                 await _db.SaveChangesAsync();
 
-                return CreatedAtAction(nameof(Get), new { id = newBook.Id }, newBook);
+                return CreatedAtAction(nameof(Get), new { id = newBook.Id }, new { message = $"Book '{newBook.BookTitle}' created successfully." });
 
             }
 
@@ -280,7 +280,7 @@ namespace BookstoreAPI.Controllers
                 _db.Books.Remove(book);
                 await _db.SaveChangesAsync();
 
-                return NoContent();
+                return Ok($"Book-ID {id} Title-{book.BookTitle} deleted from inventory");
             }
             catch (Exception ex)
             {
@@ -308,7 +308,7 @@ namespace BookstoreAPI.Controllers
 
                 HttpContext.Session.SetObjectAsJson("Cart", cart);
 
-                return Ok();
+                return Ok($"Book-ID {id} Title-{book.BookTitle} has been added to cart");
             }
             catch (Exception ex)
             {
@@ -338,7 +338,7 @@ namespace BookstoreAPI.Controllers
                     HttpContext.Session.SetObjectAsJson("Cart", cart);
                 }
 
-                return Ok();
+                return Ok($"Book-ID {id} Title-{book.BookTitle} has been removed from cart");
            }
             catch (Exception ex)
             {
