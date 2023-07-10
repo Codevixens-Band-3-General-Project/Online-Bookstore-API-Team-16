@@ -317,6 +317,7 @@ namespace BookstoreAPI.Controllers
 
         // POST: /book/add-to-cart/{id}
         [HttpPost("add-to-cart/{id:int}")]
+        [Authorize]
         public async Task<ActionResult> AddToCart(int id)
         {
             try
