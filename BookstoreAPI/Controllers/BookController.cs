@@ -225,10 +225,9 @@ namespace BookstoreAPI.Controllers
                 await _db.Books.AddAsync(newBook);
                 await _db.SaveChangesAsync();
 
-                return CreatedAtAction(nameof(Get), new { id = newBook.Id }, new { message = $"Book '{newBook.BookTitle}' created successfully." });
+                return CreatedAtAction(nameof(Get), new { id = newBook.Id }, newBook);
 
             }
-
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to create a book.");
@@ -338,22 +337,18 @@ namespace BookstoreAPI.Controllers
                     return NotFound();
                 }
 
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                var cart = await _db.CartItems
-                    .Where(c => c.UserId == userId)
-                    .ToListAsync();
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier); // Get the user's ID from the JWT token
 
-                cart.Add(new CartItem { BookId = id, Quantity = quantity });
-
-                // Save the cart items to the database
-                foreach (var cartItem in cart)
+                var cartItem = new CartItem
                 {
-                    if (!await _db.CartItems.AnyAsync(c => c.UserId == userId && c.BookId == cartItem.BookId))
-                    {
-                        _db.CartItems.Add(cartItem);
-                    }
-                }
+                    
+                    UserId = userId,
+                    BookId = id,
+                    Quantity = quantity
+                };
 
+                // Save the cart item to the database
+                await _db.CartItems.AddAsync(cartItem);
                 await _db.SaveChangesAsync();
 
                 return Ok($"Book-ID {id} Title-{book.BookTitle} (Quantity: {quantity}) has been added to cart");
@@ -367,28 +362,40 @@ namespace BookstoreAPI.Controllers
 
         // POST: /book/delete-from-cart/{id}
         [HttpPost("delete-from-cart/{id:int}")]
-        public ActionResult DeleteFromCart(int id)
+        public async Task <ActionResult> DeleteFromCart(int id, int quantity = 1)
         {
-           try
-           {
-                // Remove a book from the shopping cart
-                List<Book> cart = HttpContext.Session.GetObjectFromJson<List<Book>>("Cart");
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-                if (cart == null)
+                // Retrieve the cart items for the user
+                var cartItems = await _db.CartItems
+                    .Where(c => c.UserId == userId && c.BookId == id)
+                    .ToListAsync();
+
+                if (cartItems.Count == 0)
                 {
-                    return NotFound();
+                    return NotFound("Cart is empty");
                 }
 
-                var book = cart.FirstOrDefault(b => b.Id == id);
-
-                if (book != null)
+                // Remove the specified quantity from the cart items
+                foreach (var cartItem in cartItems)
                 {
-                    cart.Remove(book);
-                    HttpContext.Session.SetObjectAsJson("Cart", cart);
+                    if (cartItem.Quantity <= quantity)
+                    {
+                        _db.CartItems.Remove(cartItem);
+                    }
+                    else
+                    {
+                        cartItem.Quantity -= quantity;
+                        _db.CartItems.Update(cartItem);
+                    }
                 }
 
-                return Ok($"Book-ID {id} Title-{book.BookTitle} has been removed from cart");
-           }
+                await _db.SaveChangesAsync();
+
+                return Ok($"Book-ID {id} has been removed from cart");
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Failed to delete the book with ID: {id} from the cart.");
@@ -397,26 +404,38 @@ namespace BookstoreAPI.Controllers
 
         }
 
-        // POST: /book/view-cart/{id}
+        // GET: /book/view-cart
         [HttpGet("view-cart")]
-        public ActionResult<IEnumerable<Book>> ViewCart()
+        public ActionResult<IEnumerable<Cart>> ViewCart()
         {
             try
             {
-                // View the contents of the shopping cart
-                List<Book> cart = HttpContext.Session.GetObjectFromJson<List<Book>>("Cart");
-                if (cart == null)
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                var cartItems = _db.CartItems
+                    .Where(c => c.UserId == userId)
+                    .Include(c => c.Book)
+                    .ToList();
+
+                var cartItemViews = cartItems.Select(c => new Cart
                 {
-                    return StatusCode(StatusCodes.Status404NotFound, "Cart is empty, please add a book to view cart.");
-                }
-                return Ok(cart);
+                    CartItemId = c.Id,
+                    Quantity = c.Quantity,
+                    BookTitle = c.Book.BookTitle,
+                    BookAuthor = c.Book.BookAuthor,
+                    Genre = c.Book.Genre,
+                    YearOfPublication = c.Book.YearOfPublication,
+                    Publisher = c.Book.Publisher
+                }).ToList();
+
+                return Ok(cartItemViews);
             }
-            
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to view the cart.");
                 return StatusCode(StatusCodes.Status500InternalServerError, "Failed to view the cart. Please try again later.");
             }
         }
+
     }
 }

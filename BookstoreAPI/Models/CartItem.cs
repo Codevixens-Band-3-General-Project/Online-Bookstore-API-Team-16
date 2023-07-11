@@ -1,15 +1,18 @@
 ﻿using System;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
 
 namespace BookstoreAPI.Models
 {
 	public class CartItem
 	{
+        [Key]
         public int Id { get; set; }
-        public string? UserId { get; set; } // Foreign key to IdentityUser
+        public string UserId { get; set; } // Foreign key to IdentityUser
         public int BookId { get; set; }
         public int Quantity { get; set; }
-        public IdentityUser? User { get; set; } // Navigation property to IdentityUser
+
+        public Book Book { get; set; }
     }
 }
 
