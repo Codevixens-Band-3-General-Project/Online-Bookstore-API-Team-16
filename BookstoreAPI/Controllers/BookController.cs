@@ -344,20 +344,34 @@ namespace BookstoreAPI.Controllers
 
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier); // Get the user's ID from the JWT token
 
-                var cartItem = new CartItem
+                //Checks if a book already exists in cart
+                var existingCartItem = await _db.CartItems.SingleOrDefaultAsync(c => c.UserId == userId && c.BookId == id);
+
+                if(existingCartItem != null)
                 {
+                    //If book already exists update quantity
+                    existingCartItem.Quantity += quantity;
 
-                    UserId = userId,
-                    BookId = id,
-                    Quantity = quantity,
-                    Book = book
-                };
+                    await _db.SaveChangesAsync();
+                    return Ok($"Quantity of Book-ID {id}, Title -{book.BookTitle} has been updated to {existingCartItem.Quantity} in your cart");
+                }
+                else
+                {
+                    var cartItem = new CartItem
+                    {
 
-                // Save the cart item to the database
-                _db.CartItems.Add(cartItem);
-                await _db.SaveChangesAsync();
-                return Ok($"Book-ID {id} Title-{book.BookTitle} (Quantity: {quantity}) has been added to cart");
-            }
+                        UserId = userId,
+                        BookId = id,
+                        Quantity = quantity,
+                        Book = book
+                    };
+
+                    // Save the cart item to the database
+                    _db.CartItems.Add(cartItem);
+                    await _db.SaveChangesAsync();
+                    return Ok($"Book-ID {id} Title-{book.BookTitle} (Quantity: {quantity}) has been added to cart");
+                }
+            }   
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Failed to add the book with ID: {id} to the cart.");
