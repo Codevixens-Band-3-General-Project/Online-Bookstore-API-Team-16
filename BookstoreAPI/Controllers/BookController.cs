@@ -205,7 +205,8 @@ namespace BookstoreAPI.Controllers
                 {
                     BookTitle = book.BookTitle,
                     YearOfPublication = book.YearOfPublication,
-                    Publisher = book.Publisher
+                    Publisher = book.Publisher,
+                    Price = book.Price
                 };
 
                 // Split the authors by comma and remove any leading or trailing spaces
@@ -395,7 +396,7 @@ namespace BookstoreAPI.Controllers
 
                 if (cartItems.Count == 0)
                 {
-                    return NotFound("Cart is empty");
+                    return NotFound($"Book-ID {id} not in cart");
                 }
 
                 // Remove the specified quantity from the cart items
