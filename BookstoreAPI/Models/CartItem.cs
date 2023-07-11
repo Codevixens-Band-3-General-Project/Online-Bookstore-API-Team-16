@@ -14,7 +14,7 @@ namespace BookstoreAPI.Models
 
         public Book Book { get; set; }
 
-        public decimal SubTotal { get; set; }
+        public decimal TotalPrice => Quantity * Book.Price;
     }
 }
 
