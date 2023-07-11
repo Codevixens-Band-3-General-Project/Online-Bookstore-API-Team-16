@@ -13,6 +13,15 @@ namespace BookstoreAPI.Models
         public string Genre { get; set; }
         public int? YearOfPublication { get; set; }
         public string Publisher { get; set; }
+        public decimal Price { get; set; }
+    }
+
+    public class CartView
+    {
+        [Key]
+        public int ViewId { get; set; }
+        public List<Cart> Items { get; set; }
+        public decimal Total { get; set; }
     }
 
 }

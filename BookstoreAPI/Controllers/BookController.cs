@@ -280,6 +280,11 @@ namespace BookstoreAPI.Controllers
                     existingBook.Publisher = updatedBook.Publisher;
                     updatedParameters.Add("Publisher");
                 }
+                if (!(updatedBook.Price < 0) && existingBook.Price != updatedBook.Price)
+                {
+                    existingBook.Price = updatedBook.Price;
+                    updatedParameters.Add("Price");
+                }
 
                 await _db.SaveChangesAsync();
 
@@ -341,16 +346,16 @@ namespace BookstoreAPI.Controllers
 
                 var cartItem = new CartItem
                 {
-                    
+
                     UserId = userId,
                     BookId = id,
-                    Quantity = quantity
+                    Quantity = quantity,
+                    Book = book
                 };
 
                 // Save the cart item to the database
-                await _db.CartItems.AddAsync(cartItem);
+                _db.CartItems.Add(cartItem);
                 await _db.SaveChangesAsync();
-
                 return Ok($"Book-ID {id} Title-{book.BookTitle} (Quantity: {quantity}) has been added to cart");
             }
             catch (Exception ex)
@@ -425,10 +430,20 @@ namespace BookstoreAPI.Controllers
                     BookAuthor = c.Book.BookAuthor,
                     Genre = c.Book.Genre,
                     YearOfPublication = c.Book.YearOfPublication,
-                    Publisher = c.Book.Publisher
+                    Publisher = c.Book.Publisher,
+                    Price = c.Book.Price
                 }).ToList();
 
-                return Ok(cartItemViews);
+                decimal total = cartItems.Sum(c => c.Quantity * c.Book.Price);
+
+                var cartView = new CartView
+                {
+                    Items = cartItemViews,
+                    Total = total
+                };
+
+
+                return Ok(cartView);
             }
             catch (Exception ex)
             {

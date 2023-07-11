@@ -25,6 +25,7 @@ namespace BookstoreAPI.Data
         //        .HasForeignKey(c => c.UserId);
         //}
         public DbSet<Cart> Carts { get; set; }
+        public DbSet<CartView> cartViews { get; set; }
     }
 }
 
