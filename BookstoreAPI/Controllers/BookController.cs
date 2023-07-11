@@ -7,23 +7,36 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Http;
 using BookstoreAPI.Extensions;
+using BookstoreAPI.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
+using System.Data;
+using Microsoft.AspNetCore.Identity;
+using System.Security.Claims;
 
 namespace BookstoreAPI.Controllers
 {
+    [Authorize(AuthenticationSchemes = "Bearer")] // Require JWT Bearer token authentication
     [ApiController]
     [Route("[controller]")]
     public class BookController : ControllerBase
     {
         private readonly ILogger<BookController> _logger;
         private readonly ApplicationDbContext _db;
+        private readonly UserManager<IdentityUser> _userManager;
+        private readonly SignInManager<IdentityUser> _signInManager;
 
-        public BookController(ILogger<BookController> logger, ApplicationDbContext db)
+
+        public BookController(ILogger<BookController> logger, ApplicationDbContext db,
+            UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager)
         {
             _logger = logger;
             _db = db;
+            _userManager = userManager;
+            _signInManager = signInManager;
         }
 
+        // GET: /book/all
         [HttpGet("all")]
         public ActionResult<IEnumerable<Book>> Get()
         {
@@ -40,6 +53,7 @@ namespace BookstoreAPI.Controllers
             }
         }
 
+        // GET: /book/search
         [HttpGet("search")]
         public ActionResult<IEnumerable<Book>> Search(string searchTerm, string filter)
         {
@@ -92,7 +106,7 @@ namespace BookstoreAPI.Controllers
         }
 
 
-
+        // GET: /book/get-by-id/{id}
         [HttpGet("get-by-id/{id:int}")]
         public ActionResult<Book> Get(int id)
         {
@@ -116,6 +130,7 @@ namespace BookstoreAPI.Controllers
             }
         }
 
+        // GET: /book/get-by-genre/{genre}
         [HttpGet("get-by-genre/{genre}")]
         public ActionResult<IEnumerable<Book>> GetByGenre(string genre)
         {
@@ -142,7 +157,7 @@ namespace BookstoreAPI.Controllers
 
         }
 
-
+        // GET: /book/get-by-author/{author}
         [HttpGet("get-by-author/{author}")]
         public ActionResult<IEnumerable<Book>> GetByAuthor(string author)
         {
@@ -166,10 +181,11 @@ namespace BookstoreAPI.Controllers
                 _logger.LogError(ex, "Failed to retrieve books by author(s).");
                 return StatusCode(StatusCodes.Status500InternalServerError, "Failed to retrieve books by author(s). Please try again later.");
             }
-         
         }
 
+        // POST: /book/create
         [HttpPost("create")]
+        //[Authorize(Roles = "Admin")] // Restrict access to only users with the "Admin" role
         public async Task<ActionResult<Book>> CreateBook([FromForm] Book book)
         {
             try
@@ -209,10 +225,9 @@ namespace BookstoreAPI.Controllers
                 await _db.Books.AddAsync(newBook);
                 await _db.SaveChangesAsync();
 
-                return CreatedAtAction(nameof(Get), new { id = newBook.Id }, new { message = $"Book '{newBook.BookTitle}' created successfully." });
+                return CreatedAtAction(nameof(Get), new { id = newBook.Id }, newBook);
 
             }
-
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to create a book.");
@@ -220,7 +235,7 @@ namespace BookstoreAPI.Controllers
             }
         }
 
-
+        // PUT: /book/update/{id}
         [HttpPut("update/{id:int}")]
         public async Task<IActionResult> Update(int id, [FromForm] Book updatedBook)
         {
@@ -265,6 +280,11 @@ namespace BookstoreAPI.Controllers
                     existingBook.Publisher = updatedBook.Publisher;
                     updatedParameters.Add("Publisher");
                 }
+                if (!(updatedBook.Price < 0) && existingBook.Price != updatedBook.Price)
+                {
+                    existingBook.Price = updatedBook.Price;
+                    updatedParameters.Add("Price");
+                }
 
                 await _db.SaveChangesAsync();
 
@@ -280,6 +300,7 @@ namespace BookstoreAPI.Controllers
             }
         }
 
+        // DELETE: /book/delete/{id}
         [HttpDelete("delete/{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
@@ -305,8 +326,11 @@ namespace BookstoreAPI.Controllers
             }
         }
 
+
+        // POST: /book/add-to-cart/{id}
         [HttpPost("add-to-cart/{id:int}")]
-        public async Task<ActionResult> AddToCart(int id)
+        [Authorize]
+        public async Task<ActionResult> AddToCart(int id, int quantity)
         {
             try
             {
@@ -318,14 +342,37 @@ namespace BookstoreAPI.Controllers
                     return NotFound();
                 }
 
-                List<Book> cart = HttpContext.Session.GetObjectFromJson<List<Book>>("Cart") ?? new List<Book>();
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier); // Get the user's ID from the JWT token
 
-                cart.Add(book);
+                //Checks if a book already exists in cart
+                var existingCartItem = await _db.CartItems.SingleOrDefaultAsync(c => c.UserId == userId && c.BookId == id);
 
-                HttpContext.Session.SetObjectAsJson("Cart", cart);
+                if(existingCartItem != null)
+                {
+                    //If book already exists update quantity
+                    existingCartItem.Quantity += quantity;
 
-                return Ok($"Book-ID {id} Title-{book.BookTitle} has been added to cart");
-            }
+                    await _db.SaveChangesAsync();
+                    return Ok($"Quantity of Book-ID {id}, Title -{book.BookTitle} has been updated to {existingCartItem.Quantity} in your cart");
+                }
+                else
+                {
+                    var cartItem = new CartItem
+                    {
+
+                        UserId = userId,
+                        BookId = id,
+                        Quantity = quantity,
+                        Book = book,
+                        SubTotal = quantity * book.Price
+                    };
+
+                    // Save the cart item to the database
+                    _db.CartItems.Add(cartItem);
+                    await _db.SaveChangesAsync();
+                    return Ok($"Book-ID {id} Title-{book.BookTitle} (Quantity: {quantity}) has been added to cart");
+                }
+            }   
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Failed to add the book with ID: {id} to the cart.");
@@ -333,29 +380,42 @@ namespace BookstoreAPI.Controllers
             }
         }
 
+        // POST: /book/delete-from-cart/{id}
         [HttpPost("delete-from-cart/{id:int}")]
-        public ActionResult DeleteFromCart(int id)
+        public async Task <ActionResult> DeleteFromCart(int id, int quantity = 1)
         {
-           try
-           {
-                // Remove a book from the shopping cart
-                List<Book> cart = HttpContext.Session.GetObjectFromJson<List<Book>>("Cart");
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-                if (cart == null)
+                // Retrieve the cart items for the user
+                var cartItems = await _db.CartItems
+                    .Where(c => c.UserId == userId && c.BookId == id)
+                    .ToListAsync();
+
+                if (cartItems.Count == 0)
                 {
-                    return NotFound();
+                    return NotFound("Cart is empty");
                 }
 
-                var book = cart.FirstOrDefault(b => b.Id == id);
-
-                if (book != null)
+                // Remove the specified quantity from the cart items
+                foreach (var cartItem in cartItems)
                 {
-                    cart.Remove(book);
-                    HttpContext.Session.SetObjectAsJson("Cart", cart);
+                    if (cartItem.Quantity <= quantity)
+                    {
+                        _db.CartItems.Remove(cartItem);
+                    }
+                    else
+                    {
+                        cartItem.Quantity -= quantity;
+                        _db.CartItems.Update(cartItem);
+                    }
                 }
 
-                return Ok($"Book-ID {id} Title-{book.BookTitle} has been removed from cart");
-           }
+                await _db.SaveChangesAsync();
+
+                return Ok($"Book-ID {id} has been removed from cart");
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Failed to delete the book with ID: {id} from the cart.");
@@ -364,25 +424,49 @@ namespace BookstoreAPI.Controllers
 
         }
 
+        // GET: /book/view-cart
         [HttpGet("view-cart")]
-        public ActionResult<IEnumerable<Book>> ViewCart()
+        public ActionResult<IEnumerable<Cart>> ViewCart()
         {
             try
             {
-                // View the contents of the shopping cart
-                List<Book> cart = HttpContext.Session.GetObjectFromJson<List<Book>>("Cart");
-                if (cart == null)
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                var cartItems = _db.CartItems
+                    .Where(c => c.UserId == userId)
+                    .Include(c => c.Book)
+                    .ToList();
+
+                var cartItemViews = cartItems.Select(c => new Cart
                 {
-                    return StatusCode(StatusCodes.Status404NotFound, "Cart is empty, please add a book to view cart.");
-                }
-                return Ok(cart);
+                    CartItemId = c.Id,
+                    Quantity = c.Quantity,
+                    BookTitle = c.Book.BookTitle,
+                    BookAuthor = c.Book.BookAuthor,
+                    Genre = c.Book.Genre,
+                    YearOfPublication = c.Book.YearOfPublication,
+                    Publisher = c.Book.Publisher,
+                    Price = c.Book.Price,
+                    SubTotal = c.SubTotal
+                }).ToList();
+
+                decimal total = cartItems.Sum(c => c.Quantity * c.Book.Price);
+
+                var cartView = new CartView
+                {
+                    Items = cartItemViews,
+                    Total = total
+                };
+
+
+                return Ok(cartView);
             }
-            
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to view the cart.");
                 return StatusCode(StatusCodes.Status500InternalServerError, "Failed to view the cart. Please try again later.");
             }
         }
+
     }
 }
