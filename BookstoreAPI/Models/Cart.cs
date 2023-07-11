@@ -14,6 +14,7 @@ namespace BookstoreAPI.Models
         public int? YearOfPublication { get; set; }
         public string Publisher { get; set; }
         public decimal Price { get; set; }
+        public decimal SubTotal { get; set; }
     }
 
     public class CartView

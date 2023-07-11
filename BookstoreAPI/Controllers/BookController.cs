@@ -363,7 +363,8 @@ namespace BookstoreAPI.Controllers
                         UserId = userId,
                         BookId = id,
                         Quantity = quantity,
-                        Book = book
+                        Book = book,
+                        SubTotal = quantity * book.Price
                     };
 
                     // Save the cart item to the database
@@ -445,7 +446,8 @@ namespace BookstoreAPI.Controllers
                     Genre = c.Book.Genre,
                     YearOfPublication = c.Book.YearOfPublication,
                     Publisher = c.Book.Publisher,
-                    Price = c.Book.Price
+                    Price = c.Book.Price,
+                    SubTotal = c.SubTotal
                 }).ToList();
 
                 decimal total = cartItems.Sum(c => c.Quantity * c.Book.Price);
