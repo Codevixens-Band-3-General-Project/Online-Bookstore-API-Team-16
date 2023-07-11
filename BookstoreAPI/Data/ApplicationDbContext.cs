@@ -14,6 +14,17 @@ namespace BookstoreAPI.Data
 
         public DbSet<Book> Books { get; set; }
         public DbSet<CartItem> CartItems { get; set; }
+        //protected override void OnModelCreating(ModelBuilder modelBuilder)
+        //{
+        //    base.OnModelCreating(modelBuilder);
+
+        //    // Configure the relationship between CartItem and IdentityUser
+        //    modelBuilder.Entity<CartItem>()
+        //        .HasOne(c => c.User)
+        //        .WithMany()
+        //        .HasForeignKey(c => c.UserId);
+        //}
+        public DbSet<Cart> Carts { get; set; }
     }
 }
 
