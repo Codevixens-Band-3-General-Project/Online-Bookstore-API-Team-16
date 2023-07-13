@@ -19,8 +19,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-builder.Services.AddDbContextPool<ApplicationDbContext>(options =>
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+//builder.Services.AddDbContextPool<ApplicationDbContext>(options =>
+   // options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(connectionString));
 
 builder.Services.Configure<JWTConfig>(builder.Configuration.GetSection("JwtConfig"));
 builder.Services.AddAuthentication(options =>
@@ -31,7 +33,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(jwt =>
 {
-    var key = Encoding.ASCII.GetBytes(builder.Configuration.GetSection("JwtConfig:Secret").Value);
+    var key = Encoding.UTF8.GetBytes(builder.Configuration.GetSection("JwtConfig:Secret").Value);
     jwt.SaveToken = true;
     jwt.TokenValidationParameters = new TokenValidationParameters
     {
@@ -94,12 +96,8 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Seed roles and assign them to users
-app.Use(async (context, next) =>
-{
-    await IdentityInitializer.SeedRolesAndAssignToUsers(context.RequestServices);
-    await next.Invoke();
-});
+
+
 
 app.MapControllers();
 

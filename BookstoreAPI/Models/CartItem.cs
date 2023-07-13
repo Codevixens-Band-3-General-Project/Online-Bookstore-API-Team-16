@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace BookstoreAPI.Models
 {
@@ -13,7 +14,7 @@ namespace BookstoreAPI.Models
         public int Quantity { get; set; }
 
         public Book Book { get; set; }
-
+        [Precision(18, 2)]
         public decimal SubTotal { get; set; }
     }
 }

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.V4.Pages.Account.Internal;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Runtime.CompilerServices;
@@ -22,13 +23,17 @@ namespace BookstoreAPI.Controllers
     public class AuthenticationController : ControllerBase
     {
         private readonly UserManager<IdentityUser> _userManager;
+        private readonly RoleManager<IdentityRole> _roleManager;
         private readonly IConfiguration _configuration;
         // private readonly JWTConfig _jwtConfig;
-        public AuthenticationController(UserManager<IdentityUser> userManager, IConfiguration configuration)
+        public AuthenticationController(UserManager<IdentityUser> userManager, IConfiguration configuration,RoleManager<IdentityRole>roleManager)
         {
             _userManager = userManager;
             _configuration = configuration;
+            _roleManager = roleManager;
         }
+      
+       
         [HttpPost]
         [Route("Register")]
         public async Task<IActionResult> Register([FromBody] UserRegisterationDTO userRegisterationDTO)
@@ -82,7 +87,15 @@ namespace BookstoreAPI.Controllers
                 var isCreated = await _userManager.CreateAsync(newUser, userRegisterationDTO.Password);
                 if (isCreated.Succeeded)
                 {
-                    var token = GenerateJWTToken(newUser);
+                    var token = await GenerateJWTToken(newUser);
+                    string roleName = "NormalUser";
+                    if (!await _roleManager.RoleExistsAsync(roleName))
+                    {
+                        await IdentityInitializer.SeedRoles(_roleManager, roleName);
+                      
+                    }
+                    await IdentityInitializer.AssignRoles(_userManager, newUser, roleName);
+
                     return Ok(new AuthResult()
                     {
                         Result = true,
@@ -143,7 +156,7 @@ namespace BookstoreAPI.Controllers
                     }
                     else
                     {
-                        var token = GenerateJWTToken(existingUser);
+                        var token =await  GenerateJWTToken(existingUser);
                         return Ok(new AuthResult()
                         {
                             Token = token,
@@ -166,22 +179,15 @@ namespace BookstoreAPI.Controllers
 
             }
         }
-        private string GenerateJWTToken(IdentityUser user)
+        private async Task<string> GenerateJWTToken(IdentityUser user)
         {
             var jwtTokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.UTF8.GetBytes(_configuration.GetSection(key: "JwtConfig:Secret").Value);
+            var claims = await GetAllValidClaims(user);
             var tokenDescriptor = new SecurityTokenDescriptor()
             {
                 Subject = new ClaimsIdentity(
-                    new[]
-                    {
-                        new Claim(type: "Id", value: user.Id),
-                        new Claim(type: JwtRegisteredClaimNames.Sub, value: user.Email
-                        ),
-                        new Claim(type: JwtRegisteredClaimNames.Email, value: user.Email),
-                        new Claim(type: JwtRegisteredClaimNames.Jti, value: Guid.NewGuid().ToString()),
-                        new Claim(type: JwtRegisteredClaimNames.Iat, value: DateTime.Now.ToUniversalTime().ToString())
-                    }
+                    claims
                     ),
 
 
@@ -192,6 +198,39 @@ namespace BookstoreAPI.Controllers
             var token = jwtTokenHandler.CreateToken(tokenDescriptor);
             return jwtTokenHandler.WriteToken(token);//convert jwtToken to a string
 
+        }
+        //Get all valid calims
+        private async Task<List<Claim>>GetAllValidClaims(IdentityUser user)
+        {
+            var _options = new IdentityOptions();
+            var claims = new List<Claim>
+            {
+                     new Claim(type: "Id", value: user.Id),
+                        new Claim(type: JwtRegisteredClaimNames.Sub, value: user.Email
+                        ),
+                        new Claim(type: JwtRegisteredClaimNames.Email, value: user.Email),
+                        new Claim(type: JwtRegisteredClaimNames.Jti, value: Guid.NewGuid().ToString()),
+                        new Claim(type: JwtRegisteredClaimNames.Iat, value: DateTime.Now.ToUniversalTime().ToString())
+            };
+            var userClaims = await _userManager.GetClaimsAsync(user);
+            claims.AddRange(userClaims);
+
+            var userRoles = await _userManager.GetRolesAsync(user);
+            foreach(var userRole in userRoles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role,userRole));
+               var role = await _roleManager.FindByNameAsync(userRole);
+                if(role!=null)
+                {
+                    var roleClaims = await _roleManager.GetClaimsAsync(role);
+                    
+                    foreach(var roleClaim in roleClaims)
+                    {
+                        claims.Add(roleClaim);
+                    }
+                }
+            }
+            return claims;
         }
     }
 }

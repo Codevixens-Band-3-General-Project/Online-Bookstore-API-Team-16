@@ -25,15 +25,19 @@ namespace BookstoreAPI.Controllers
         private readonly ApplicationDbContext _db;
         private readonly UserManager<IdentityUser> _userManager;
         private readonly SignInManager<IdentityUser> _signInManager;
-
+        private readonly RoleManager<IdentityRole> _roleManager;
+        private IdentityUser currentUser;
+        List<string> roles;
 
         public BookController(ILogger<BookController> logger, ApplicationDbContext db,
-            UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager)
+            UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager,RoleManager<IdentityRole> roleManager)
         {
             _logger = logger;
             _db = db;
             _userManager = userManager;
             _signInManager = signInManager;
+            _roleManager = roleManager;
+           
         }
 
         // GET: /book/all
@@ -185,55 +189,60 @@ namespace BookstoreAPI.Controllers
 
         // POST: /book/create
         [HttpPost("create")]
-        //[Authorize(Roles = "Admin")] // Restrict access to only users with the "Admin" role
+        //[Authorize(Policy = "Admin")]
+        [Authorize(Roles = "Admin")] // Restrict access to only users with the "Admin" role
         public async Task<ActionResult<Book>> CreateBook([FromForm] Book book)
         {
-            try
-            {
-                // Check if a book with the same title, author, and year of publication already exists
-                var existingBook = await _db.Books.FirstOrDefaultAsync(b =>
-                    b.BookTitle == book.BookTitle &&
-                    b.BookAuthor == book.BookAuthor &&
-                    b.YearOfPublication == book.YearOfPublication);
+          
+           
 
-                if (existingBook != null)
+                try
                 {
-                    return Conflict("A book with the same title, author, and year of publication already exists.");
+                    // Check if a book with the same title, author, and year of publication already exists
+                    var existingBook = await _db.Books.FirstOrDefaultAsync(b =>
+                        b.BookTitle == book.BookTitle &&
+                        b.BookAuthor == book.BookAuthor &&
+                        b.YearOfPublication == book.YearOfPublication);
+
+                    if (existingBook != null)
+                    {
+                        return Conflict("A book with the same title, author, and year of publication already exists.");
+                    }
+                    // Create a new book and save it to the database
+                    Book newBook = new Book
+                    {
+                        BookTitle = book.BookTitle,
+                        YearOfPublication = book.YearOfPublication,
+                        Publisher = book.Publisher,
+                        Price = book.Price
+                    };
+
+                    // Split the authors by comma and remove any leading or trailing spaces
+                    if (!string.IsNullOrEmpty(book.BookAuthor))
+                    {
+                        string[] authors = book.BookAuthor.Split(',').Select(a => a.Trim()).ToArray();
+                        newBook.BookAuthor = string.Join(", ", authors);
+                    }
+
+                    // Split the genres by comma and remove any leading or trailing spaces
+                    if (!string.IsNullOrEmpty(book.Genre))
+                    {
+                        string[] genres = book.Genre.Split(',').Select(g => g.Trim()).ToArray();
+                        newBook.Genre = string.Join(", ", genres);
+                    }
+
+                    await _db.Books.AddAsync(newBook);
+                    await _db.SaveChangesAsync();
+
+                    return CreatedAtAction(nameof(Get), new { id = newBook.Id }, newBook);
+
                 }
-                // Create a new book and save it to the database
-                Book newBook = new Book
+                catch (Exception ex)
                 {
-                    BookTitle = book.BookTitle,
-                    YearOfPublication = book.YearOfPublication,
-                    Publisher = book.Publisher,
-                    Price = book.Price
-                };
-
-                // Split the authors by comma and remove any leading or trailing spaces
-                if (!string.IsNullOrEmpty(book.BookAuthor))
-                {
-                    string[] authors = book.BookAuthor.Split(',').Select(a => a.Trim()).ToArray();
-                    newBook.BookAuthor = string.Join(", ", authors);
+                    _logger.LogError(ex, "Failed to create a book.");
+                    return StatusCode(StatusCodes.Status500InternalServerError, "Failed to create a book. Please try again later.");
                 }
-
-                // Split the genres by comma and remove any leading or trailing spaces
-                if (!string.IsNullOrEmpty(book.Genre))
-                {
-                    string[] genres = book.Genre.Split(',').Select(g => g.Trim()).ToArray();
-                    newBook.Genre = string.Join(", ", genres);
-                }
-
-                await _db.Books.AddAsync(newBook);
-                await _db.SaveChangesAsync();
-
-                return CreatedAtAction(nameof(Get), new { id = newBook.Id }, newBook);
-
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to create a book.");
-                return StatusCode(StatusCodes.Status500InternalServerError, "Failed to create a book. Please try again later.");
-            }
+           
         }
 
         // PUT: /book/update/{id}
@@ -303,6 +312,7 @@ namespace BookstoreAPI.Controllers
 
         // DELETE: /book/delete/{id}
         [HttpDelete("delete/{id:int}")]
+        [Authorize(Roles ="Admin")]
         public async Task<IActionResult> Delete(int id)
         {
             try
@@ -330,7 +340,7 @@ namespace BookstoreAPI.Controllers
 
         // POST: /book/add-to-cart/{id}
         [HttpPost("add-to-cart/{id:int}")]
-        [Authorize]
+        [Authorize(Roles ="NormalUser")]
         public async Task<ActionResult> AddToCart(int id, int quantity)
         {
             try
@@ -383,6 +393,7 @@ namespace BookstoreAPI.Controllers
 
         // POST: /book/delete-from-cart/{id}
         [HttpPost("delete-from-cart/{id:int}")]
+        [Authorize(Roles = "NormalUser")]
         public async Task <ActionResult> DeleteFromCart(int id, int quantity = 1)
         {
             try
@@ -427,6 +438,7 @@ namespace BookstoreAPI.Controllers
 
         // GET: /book/view-cart
         [HttpGet("view-cart")]
+        [Authorize(Roles = "NormalUser")]
         public ActionResult<IEnumerable<Cart>> ViewCart()
         {
             try

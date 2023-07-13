@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
 using System.ComponentModel.DataAnnotations;
 
 namespace BookstoreAPI.Models
@@ -13,7 +14,9 @@ namespace BookstoreAPI.Models
         public string Genre { get; set; }
         public int? YearOfPublication { get; set; }
         public string Publisher { get; set; }
+        [Precision(18, 2)]
         public decimal Price { get; set; }
+        [Precision(18, 2)]
         public decimal SubTotal { get; set; }
     }
 
@@ -22,6 +25,7 @@ namespace BookstoreAPI.Models
         [Key]
         public int ViewId { get; set; }
         public List<Cart> Items { get; set; }
+        [Precision(18, 2)]
         public decimal Total { get; set; }
     }
 
