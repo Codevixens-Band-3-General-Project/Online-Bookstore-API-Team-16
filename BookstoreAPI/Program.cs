@@ -95,7 +95,11 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
-
+app.Use(async (context, next) =>
+{
+    await IdentityInitializer.SeedRolesAndAssignToUsers(context.RequestServices);
+    await next.Invoke();
+});
 
 
 
