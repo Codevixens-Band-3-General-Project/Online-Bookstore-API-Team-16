@@ -247,6 +247,7 @@ namespace BookstoreAPI.Controllers
 
         // PUT: /book/update/{id}
         [HttpPut("update/{id:int}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update(int id, [FromForm] Book updatedBook)
         {
             try
