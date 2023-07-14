@@ -291,7 +291,7 @@ namespace BookstoreAPI.Controllers
                     existingBook.Publisher = updatedBook.Publisher;
                     updatedParameters.Add("Publisher");
                 }
-                if (!(updatedBook.Price < 0) && existingBook.Price != updatedBook.Price)
+                if (!(updatedBook.Price <= 0) && existingBook.Price != updatedBook.Price)
                 {
                     existingBook.Price = updatedBook.Price;
                     updatedParameters.Add("Price");
