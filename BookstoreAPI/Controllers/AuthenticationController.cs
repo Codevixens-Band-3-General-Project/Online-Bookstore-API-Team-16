@@ -25,7 +25,7 @@ namespace BookstoreAPI.Controllers
         private readonly UserManager<IdentityUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly IConfiguration _configuration;
-        // private readonly JWTConfig _jwtConfig;
+        private readonly JWTConfig _jwtConfig;
         public AuthenticationController(UserManager<IdentityUser> userManager, IConfiguration configuration,RoleManager<IdentityRole>roleManager)
         {
             _userManager = userManager;
@@ -87,15 +87,24 @@ namespace BookstoreAPI.Controllers
                 var isCreated = await _userManager.CreateAsync(newUser, userRegisterationDTO.Password);
                 if (isCreated.Succeeded)
                 {
-                    var token = await GenerateJWTToken(newUser);
-                    string roleName = "NormalUser";
-                    if (!await _roleManager.RoleExistsAsync(roleName))
+                    try
                     {
-                        await IdentityInitializer.SeedRoles(_roleManager, roleName);
-                      
+                        string roleName = "Admin";
+                        var x=await _userManager.AddToRoleAsync(newUser, "Admin");
+                        if(!x.Succeeded)
+                        {
+                            return BadRequest("Couldn't assign user to role");
+                        }
                     }
-                    await IdentityInitializer.AssignRoles(_userManager, newUser, roleName);
+                   catch(Exception ex)
+                    {
+                        return BadRequest(ex.Message);
+                    }
+                    
+                    // var userr =await _userManager.FindByEmailAsync(newUser.Email);
+                    //  await IdentityInitializer.AssignRoles(_userManager, newUser, roleName);
 
+                    var token = await GenerateJWTToken(newUser);
                     return Ok(new AuthResult()
                     {
                         Result = true,
@@ -153,6 +162,7 @@ namespace BookstoreAPI.Controllers
                                 "Invaild email or password"
                             }
                         });
+
                     }
                     else
                     {

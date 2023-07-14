@@ -9,35 +9,45 @@ public class IdentityInitializer
         var userManager = serviceProvider.GetRequiredService<UserManager<IdentityUser>>();
 
         // Seed roles
-       // await SeedRoles(roleManager);
+        await SeedRoles(roleManager);
 
         // Assign roles to users
-       // await AssignRoles(userManager);
+        await AssignRoles(userManager);
     }
 
-    public static async Task SeedRoles(RoleManager<IdentityRole> roleManager,string roleName)
+    public static async Task SeedRoles(RoleManager<IdentityRole> roleManager)
     {
-        if (!await roleManager.RoleExistsAsync(roleName))
+        if (!await roleManager.RoleExistsAsync("Admin"))
         {
             var role = new IdentityRole
             {
-                Name = roleName
+                Name = "Admin"
             };
             await roleManager.CreateAsync(role);
         }
 
-   
+        if (!await roleManager.RoleExistsAsync("NormalUser"))
+        {
+            var role = new IdentityRole
+            {
+                Name = "NormalUser"
+            };
+            await roleManager.CreateAsync(role);
+        }
     }
 
-    public static async Task AssignRoles(UserManager<IdentityUser> userManager, IdentityUser user,string roleName)
+    public static async Task AssignRoles(UserManager<IdentityUser> userManager)
     {
+        var adminUser = await userManager.FindByEmailAsync("admin@gmail.com");
+        if (adminUser != null)
+        {
+            await userManager.AddToRoleAsync(adminUser, "Admin");
+        }
 
-       
-            await userManager.AddToRoleAsync(user, roleName);
-        
-     
-    
+        var normalUser = await userManager.FindByEmailAsync("user@example.com");
+        if (normalUser != null)
+        {
+            await userManager.AddToRoleAsync(normalUser, "NormalUser");
+        }
     }
 }
-
-
