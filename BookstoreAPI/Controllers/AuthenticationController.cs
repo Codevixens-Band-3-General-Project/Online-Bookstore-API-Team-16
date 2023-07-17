@@ -89,8 +89,8 @@ namespace BookstoreAPI.Controllers
                 {
                     try
                     {
-                        string roleName = "Admin";
-                        var x=await _userManager.AddToRoleAsync(newUser, "Admin");
+                        string roleName = "NormalUser";
+                        var x=await _userManager.AddToRoleAsync(newUser, "NormalUser");
                         if(!x.Succeeded)
                         {
                             return BadRequest("Couldn't assign user to role");
