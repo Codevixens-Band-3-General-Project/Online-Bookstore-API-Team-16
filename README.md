@@ -50,6 +50,9 @@ To use the Online Book Store API, follow the steps below:
 3. **Configure the database**
 - Open the `appsettings.json` file.
 - Modify the `ConnectionStrings:DefaultConnection` value to match your SQL Server connection string.
+- Modify the `JwtConfig:Secret` value to use a secure secret key for JWT token generation. It is recommended to generate a strong random key of sufficient length (e.g., 256 bits).
+- You can use a tool like a password manager or a cryptographic library to generate a secure secret key.
+
 
 4. **Apply database migrations**
   ```
