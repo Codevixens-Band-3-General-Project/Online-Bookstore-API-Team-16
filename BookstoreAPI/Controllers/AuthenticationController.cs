@@ -50,7 +50,7 @@ namespace BookstoreAPI.Controllers
 
                 });
             }
-            else if(userRegisterationDTO.Password.Length < 8)
+            if(userRegisterationDTO.Password.Length < 8)
             {
                return BadRequest(error:new AuthResult()
                {
@@ -61,6 +61,17 @@ namespace BookstoreAPI.Controllers
                     }
 
                    });
+            }
+            else if (!Regex.IsMatch(userRegisterationDTO.Password, @"^(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=[\]{};':""\\|,.<>/?]).*$"))
+            {
+                return BadRequest(new AuthResult()
+                {
+                    Result = false,
+                    Errors = new List<string>()
+                    {
+                    "Password must contain at least one capital letter and one symbol"
+                    }
+                });
             }
             if (ModelState.IsValid)
             {
