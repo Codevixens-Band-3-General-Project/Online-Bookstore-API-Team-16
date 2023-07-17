@@ -180,7 +180,7 @@ namespace BookstoreAPI.Controllers
                         var token =await  GenerateJWTToken(existingUser);
                         return Ok(new AuthResult()
                         {
-                            Token = token,
+                            Token = "Bearer " + token,
                             Result = true,
 
                         });
